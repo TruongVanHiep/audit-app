@@ -1,0 +1,51 @@
+services:
+  database:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: 'directus'
+      POSTGRES_PASSWORD: 'directuspassword'
+      POSTGRES_DB: 'audit_db'
+    volumes:
+      - ./data/database:/var/lib/postgresql/data
+    restart: unless-stopped
+    # Healthcheck để Directus biết lúc nào Postgres THỰC SỰ nhận kết nối được.
+    # Lần đầu chạy, Postgres phải khởi tạo database (~20-30s); nếu không có
+    # healthcheck, Directus kết nối sớm -> ECONNREFUSED -> container chết.
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U directus -d audit_db']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  directus:
+    # Ghim đúng phiên bản, KHÔNG dùng :latest.
+    # Lý do: từ Directus 12, custom permission rules (lọc theo dòng, preset,
+    # giới hạn field) trở thành tính năng cần license trả phí. Bản 11.x vẫn
+    # cho dùng miễn phí — mà row-level security là bắt buộc với app audit.
+    # Dùng :latest còn nguy hiểm ở chỗ một lần `docker compose pull` vô tình
+    # có thể nâng cấp DB lên bản mới và KHÔNG hạ xuống lại được.
+    image: directus/directus:11.17.4
+    ports:
+      - '8055:8055'
+    environment:
+      KEY: 'demo-key-123456'
+      SECRET: 'demo-secret-123456'
+      ADMIN_EMAIL: 'admin@example.com'
+      ADMIN_PASSWORD: 'Password123!'
+      DB_CLIENT: 'pg'
+      DB_HOST: 'database'
+      DB_PORT: '5432'
+      DB_DATABASE: 'audit_db'
+      DB_USER: 'directus'
+      DB_PASSWORD: 'directuspassword'
+      # Bật CORS để Frontend gọi API không bị chặn
+      CORS_ENABLED: 'true'
+      CORS_ORIGIN: 'true'
+    volumes:
+      - ./uploads:/directus/uploads
+    restart: unless-stopped
+    depends_on:
+      database:
+        # `condition` là mấu chốt — chờ healthcheck ở trên báo xanh mới khởi động.
+        condition: service_healthy
