@@ -85,11 +85,19 @@ export async function listTemplateItems(templateId: string): Promise<TemplateIte
 /* Phiên audit                                                         */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Field cần lấy cho một phiếu audit.
+ *
+ * Lưu ý cú pháp: quan hệ lồng nhau viết bằng OBJECT `{ store: [...] }`,
+ * KHÔNG viết bằng đường dẫn chấm `'store.id'`. REST API của Directus chấp nhận
+ * cả hai, nhưng kiểu TypeScript của SDK chỉ hiểu dạng object — dùng dạng chấm
+ * sẽ biên dịch lỗi.
+ */
 const AUDIT_FIELDS = [
   'id', 'status', 'date_started', 'date_submitted',
   'score', 'max_score', 'score_percent', 'latitude', 'longitude', 'note',
-  'store.id', 'store.code', 'store.name', 'store.address',
-  'template.id', 'template.name', 'template.version',
+  { store: ['id', 'code', 'name', 'address'] },
+  { template: ['id', 'name', 'version'] },
 ] as const;
 
 /** Danh sách audit của chính người đang đăng nhập (server tự lọc theo quyền). */
@@ -166,7 +174,7 @@ export async function submitAudit(
 
 const ANSWER_FIELDS = [
   'id', 'audit', 'item', 'value', 'score', 'note',
-  'photos.id', 'photos.directus_files_id',
+  { photos: ['id', 'directus_files_id'] },
 ] as const;
 
 export async function listAnswers(auditId: string): Promise<AuditAnswer[]> {

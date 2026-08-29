@@ -54,7 +54,16 @@ export const darkTheme = {
   brandBg: '#1E3A8A',
 } as const;
 
-export type Theme = typeof lightTheme;
+/**
+ * Kiểu của bảng màu.
+ *
+ * Phải ánh xạ mọi khoá về `string`, KHÔNG dùng thẳng `typeof lightTheme`.
+ * Vì `as const` biến mỗi màu thành kiểu literal (`'#2563EB'` chứ không phải
+ * `string`), nên `darkTheme` với màu khác sẽ không gán được vào `Theme`.
+ * Cách này giữ nguyên danh sách khoá (thiếu khoá vẫn báo lỗi) nhưng cho phép
+ * giá trị khác nhau giữa hai bảng.
+ */
+export type Theme = { readonly [K in keyof typeof lightTheme]: string };
 
 /** Lấy bảng màu theo chế độ sáng/tối của hệ điều hành. */
 export function useTheme(): Theme {

@@ -82,6 +82,25 @@ export interface Audit {
   findings?: Finding[];
 }
 
+/**
+ * Bảng trung gian nối câu trả lời với file ảnh.
+ *
+ * Phải khai báo tường minh và đưa vào `Schema` bên dưới, nếu không Directus SDK
+ * không coi `photos` là quan hệ và sẽ không cho query field lồng nhau
+ * `{ photos: ['directus_files_id'] }`.
+ */
+export interface AuditAnswerPhoto {
+  id: number;
+  audit_answers_id: string;
+  directus_files_id: string;
+}
+
+export interface FindingPhoto {
+  id: number;
+  findings_id: string;
+  directus_files_id: string;
+}
+
 export interface AuditAnswer {
   id: string;
   audit: string;
@@ -90,7 +109,7 @@ export interface AuditAnswer {
   value: string | null;
   score: number | null;
   note: string | null;
-  photos?: { id: number; directus_files_id: string }[];
+  photos?: AuditAnswerPhoto[];
 }
 
 export interface Finding {
@@ -105,6 +124,7 @@ export interface Finding {
   corrective_action: string | null;
   date_resolved: string | null;
   assignee: string | null;
+  photos?: FindingPhoto[];
 }
 
 export interface DirectusUser {
@@ -126,6 +146,9 @@ export interface Schema {
   audits: Audit[];
   audit_answers: AuditAnswer[];
   findings: Finding[];
+  // Bảng trung gian — phải có mặt ở đây thì SDK mới hiểu quan hệ ảnh
+  audit_answers_photos: AuditAnswerPhoto[];
+  findings_photos: FindingPhoto[];
 }
 
 /* ------------------------------------------------------------------ */
