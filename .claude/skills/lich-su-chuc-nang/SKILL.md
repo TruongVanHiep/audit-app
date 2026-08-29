@@ -19,6 +19,7 @@ cạm bẫy nào đã gặp.
 | [2026-08-28-phan-quyen-auditor.md](2026-08-28-phan-quyen-auditor.md) | Phân quyền Auditor + test tấn công | ✅ Xong, 17/17 pass |
 | [2026-08-28-mobile-nen-tang.md](2026-08-28-mobile-nen-tang.md) | Nền tảng app Expo | ✅ Xong (hoàn tất 29/08) |
 | [2026-08-29-man-hinh-checklist.md](2026-08-29-man-hinh-checklist.md) | Màn hình chấm điểm + chạy được lần đầu | ✅ Xong, đã kiểm chứng end-to-end |
+| [2026-08-29-dashboard-va-role-manager.md](2026-08-29-dashboard-va-role-manager.md) | Dashboard Insights + role Manager | ⚠️ Quyền 16/16, giao diện chưa xem tận mắt |
 | [2026-08-28-cau-hinh-claude.md](2026-08-28-cau-hinh-claude.md) | Cấu hình `.claude/` + quy trình Git | ✅ Xong |
 | [2026-08-28-don-dep-repo-git.md](2026-08-28-don-dep-repo-git.md) | Dọn dẹp repo + dựng Gitflow | ✅ Xong, đã clone thử |
 
