@@ -101,6 +101,7 @@ export default function StoresScreen() {
         templateId: template.id,
         latitude: loc.lat,
         longitude: loc.lng,
+        region: store.region,
       });
 
       router.push(`/audit/${audit.id}`);

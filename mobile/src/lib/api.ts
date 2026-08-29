@@ -135,6 +135,8 @@ export async function createAudit(input: {
   templateId: string;
   latitude?: number | null;
   longitude?: number | null;
+  /** Khu vuc cua cua hang, chep sang audits de dashboard gop nhom duoc */
+  region?: string | null;
 }): Promise<Audit> {
   // KHÔNG gửi `auditor` lên. Directus tự điền bằng preset $CURRENT_USER,
   // và validation sẽ từ chối nếu ta cố gửi id người khác.
@@ -145,6 +147,7 @@ export async function createAudit(input: {
       date_started: new Date().toISOString(),
       latitude: input.latitude ?? null,
       longitude: input.longitude ?? null,
+      region: input.region ?? null,
     } as never),
   )) as unknown as Audit;
 }
