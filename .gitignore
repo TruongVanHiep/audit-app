@@ -1,0 +1,34 @@
+# ── Dữ liệu runtime — KHÔNG commit ────────────────────────────────
+# Tái tạo được bằng directus/schema/*.mjs, nên không cần lưu vào git.
+# data/ chứa file nhị phân của Postgres: hàng nghìn file, đổi liên tục
+# khi container chạy, diff vô nghĩa, và chứa cả hash mật khẩu người dùng.
+data/
+uploads/
+backup/
+
+# ── Cấu hình cá nhân theo máy ─────────────────────────────────────
+.claude/settings.local.json
+.env
+.env.local
+mobile/.env
+
+# ── Node ──────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# ── Expo / React Native ───────────────────────────────────────────
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+mobile/expo-env.d.ts
+mobile/.metro-health-check*
+mobile/*.tsbuildinfo
+# Thư mục native sinh ra bởi prebuild
+mobile/ios/
+mobile/android/
+
+# ── Hệ điều hành / IDE ────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
