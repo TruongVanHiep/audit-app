@@ -17,7 +17,8 @@ cạm bẫy nào đã gặp.
 | [2026-08-28-backend-schema.md](2026-08-28-backend-schema.md) | Schema Directus + dữ liệu mẫu | ✅ Xong, đã kiểm chứng |
 | [2026-08-28-ha-directus-11.md](2026-08-28-ha-directus-11.md) | Hạ Directus 12 → 11 + healthcheck | ✅ Xong, đã kiểm chứng |
 | [2026-08-28-phan-quyen-auditor.md](2026-08-28-phan-quyen-auditor.md) | Phân quyền Auditor + test tấn công | ✅ Xong, 17/17 pass |
-| [2026-08-28-mobile-nen-tang.md](2026-08-28-mobile-nen-tang.md) | Nền tảng app Expo | ⚠️ Dở dang, chưa chạy thử |
+| [2026-08-28-mobile-nen-tang.md](2026-08-28-mobile-nen-tang.md) | Nền tảng app Expo | ✅ Xong (hoàn tất 29/08) |
+| [2026-08-29-man-hinh-checklist.md](2026-08-29-man-hinh-checklist.md) | Màn hình chấm điểm + chạy được lần đầu | ✅ Xong, đã kiểm chứng end-to-end |
 | [2026-08-28-cau-hinh-claude.md](2026-08-28-cau-hinh-claude.md) | Cấu hình `.claude/` + quy trình Git | ✅ Xong |
 | [2026-08-28-don-dep-repo-git.md](2026-08-28-don-dep-repo-git.md) | Dọn dẹp repo + dựng Gitflow | ✅ Xong, đã clone thử |
 

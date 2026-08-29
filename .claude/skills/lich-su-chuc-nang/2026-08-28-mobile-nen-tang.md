@@ -1,6 +1,10 @@
 # Nền tảng app Expo
 
-**Ngày:** 2026-08-28 · **Trạng thái:** ⚠️ Dở dang — code đã viết, **chưa chạy thử lần nào**
+**Ngày:** 2026-08-28 · **Trạng thái:** ✅ Đã hoàn tất ngày 2026-08-29 —
+xem [2026-08-29-man-hinh-checklist.md](2026-08-29-man-hinh-checklist.md)
+
+> Bản ghi này giữ nguyên nội dung lúc viết (khi code còn dở dang) để thấy được
+> những gì đã dự đoán đúng và sai. Phần "Còn thiếu" bên dưới nay đã xử lý xong.
 
 ## Làm được gì
 
