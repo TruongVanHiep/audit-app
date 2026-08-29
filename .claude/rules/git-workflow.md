@@ -3,6 +3,29 @@
 Áp dụng cho cả người và Claude. Mục tiêu: repo sạch, lịch sử đọc được, và
 **đồng đội clone về là chạy được ngay**.
 
+## ⚠️ Cảnh báo: ĐỪNG `git switch main`
+
+Nhánh `main` vẫn đang ở commit `8882b80`, nơi 2.906 file `data/database` còn
+được theo dõi. Chuyển sang `main` sẽ khiến git **ghi đè thư mục dữ liệu
+Postgres đang chạy** bằng bản chụp cũ — database hỏng ngay lập tức.
+
+Đây không phải giả thuyết. Ngày 2026-08-28, khi merge nhánh dọn dẹp vào
+`develop`, git đã xoá sạch `data/database`, `data/database_v12_old` và
+`backup/*.sql` khỏi ổ đĩa (vì cả ba đều đang được track và bị đánh dấu xoá
+trong commit). Postgres crash-loop với lỗi
+`initdb: directory exists but is not empty`.
+
+Dựng lại được trong 2 phút nhờ script schema — nhưng chỉ vì backend là code.
+
+**Trước khi làm bất cứ thao tác nào đụng tới `main`:**
+
+```bash
+docker compose down          # tắt Postgres, tránh ghi đè file đang mở
+```
+
+Cách xoá hẳn cái bẫy này: phát hành `release/0.1.0` để `main` bắt kịp
+`develop`, hoặc viết lại lịch sử bằng `git filter-repo`. Xem mục *Việc cần sửa*.
+
 ## Không bao giờ commit
 
 Đây là phần quan trọng nhất. Repo này đang vi phạm cả bốn — xem mục *Việc cần
