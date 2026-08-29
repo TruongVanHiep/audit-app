@@ -13,6 +13,7 @@
  * AsyncStorage lưu plaintext, máy đã root/jailbreak là đọc được.
  */
 
+import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import {
   createDirectus,
@@ -32,7 +33,48 @@ export const DIRECTUS_URL =
 const TOKEN_KEY = 'directus_auth';
 
 /**
- * Nơi cất token. SecureStore chỉ nhận chuỗi nên phải tự JSON hoá.
+ * ─── VÌ SAO PHẢI TÁCH THEO NỀN TẢNG ─────────────────────────────────
+ *
+ * `expo-secure-store` là module NATIVE, không chạy được trên web. Bản web của
+ * nó đúng nghĩa là `export default {}` — một object rỗng. Gọi vào sẽ nhận
+ * `ExpoSecureStore.default.setValueWithKeyAsync is not a function`.
+ *
+ * Trên điện thoại (mục tiêu thật của app): dùng SecureStore, tức Keychain của
+ * iOS / Keystore của Android — vùng được hệ điều hành mã hoá.
+ *
+ * Trên web (chỉ để lập trình viên chạy thử nhanh trong trình duyệt):
+ * lùi về `localStorage`.
+ *
+ * ⚠️ `localStorage` KHÔNG an toàn — mọi đoạn JavaScript chạy trên trang đều
+ * đọc được, nên một lỗ hổng XSS là lộ token. Chấp nhận được cho môi trường
+ * phát triển, KHÔNG được dùng cho bản web phát hành thật. Muốn có bản web
+ * dùng thật thì phải chuyển sang cookie `httpOnly` do server đặt.
+ */
+const isWeb = Platform.OS === 'web';
+
+/** Đọc localStorage an toàn — có thể không tồn tại lúc render phía server. */
+function webGet(): string | null {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return null;
+    return window.localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function webSet(value: string | null): void {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    if (value === null) window.localStorage.removeItem(TOKEN_KEY);
+    else window.localStorage.setItem(TOKEN_KEY, value);
+  } catch {
+    // Trình duyệt chặn lưu trữ (chế độ ẩn danh, chặn cookie...) thì bỏ qua.
+    // Người dùng sẽ phải đăng nhập lại mỗi lần tải trang, còn hơn là crash.
+  }
+}
+
+/**
+ * Nơi cất token. Cả hai cơ chế chỉ nhận chuỗi nên phải tự JSON hoá.
  *
  * Lưu ý giới hạn: SecureStore trên Android chỉ chứa được ~2KB mỗi khoá.
  * Token của Directus khoảng vài trăm byte nên thoải mái, nhưng đừng nhét
@@ -41,7 +83,7 @@ const TOKEN_KEY = 'directus_auth';
 const secureStorage: AuthenticationStorage = {
   async get() {
     try {
-      const raw = await SecureStore.getItemAsync(TOKEN_KEY);
+      const raw = isWeb ? webGet() : await SecureStore.getItemAsync(TOKEN_KEY);
       return raw ? (JSON.parse(raw) as AuthenticationData) : null;
     } catch {
       // Đọc hỏng (dữ liệu cũ sai định dạng, đổi khoá mã hoá...) thì coi như
@@ -50,11 +92,17 @@ const secureStorage: AuthenticationStorage = {
     }
   },
   async set(value) {
-    if (value === null) {
+    const raw = value === null ? null : JSON.stringify(value);
+
+    if (isWeb) {
+      webSet(raw);
+      return;
+    }
+    if (raw === null) {
       await SecureStore.deleteItemAsync(TOKEN_KEY);
       return;
     }
-    await SecureStore.setItemAsync(TOKEN_KEY, JSON.stringify(value));
+    await SecureStore.setItemAsync(TOKEN_KEY, raw);
   },
 };
 
