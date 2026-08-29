@@ -19,6 +19,7 @@ cạm bẫy nào đã gặp.
 | [2026-08-28-phan-quyen-auditor.md](2026-08-28-phan-quyen-auditor.md) | Phân quyền Auditor + test tấn công | ✅ Xong, 17/17 pass |
 | [2026-08-28-mobile-nen-tang.md](2026-08-28-mobile-nen-tang.md) | Nền tảng app Expo | ⚠️ Dở dang, chưa chạy thử |
 | [2026-08-28-cau-hinh-claude.md](2026-08-28-cau-hinh-claude.md) | Cấu hình `.claude/` + quy trình Git | ✅ Xong |
+| [2026-08-28-don-dep-repo-git.md](2026-08-28-don-dep-repo-git.md) | Dọn dẹp repo + dựng Gitflow | ✅ Xong, đã clone thử |
 
 ## Khi nào ghi
 
