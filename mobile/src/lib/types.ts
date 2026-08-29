@@ -78,6 +78,10 @@ export interface Audit {
   latitude: number | null;
   longitude: number | null;
   note: string | null;
+  /** Sao chep tu cua hang luc tao phieu.
+   *  Vi sao lap du lieu: Directus 11 khong gop nhom xuyen quan he duoc
+   *  (groupBy=store.region tra loi 500), nen dashboard can truong nay o ngay tren audits. */
+  region: Region | null;
   answers?: AuditAnswer[];
   findings?: Finding[];
 }

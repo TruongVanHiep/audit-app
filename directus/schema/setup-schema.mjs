@@ -200,6 +200,15 @@ async function main() {
     await createField('audits', 'note', 'text',
       textMulti({ note: 'Nhận xét chung của auditor' }), f);
 
+    // Phi chuẩn hoá khu vực từ cửa hàng xuống đây.
+    // Vì sao lặp dữ liệu? Directus 11 KHÔNG gộp nhóm xuyên quan hệ được —
+    //  trả lỗi 500. Muốn vẽ biểu đồ điểm theo khu vực
+    // thì trường đó phải nằm ngay trên bảng audits. Đây cũng là cách làm chuẩn
+    // của bảng dữ liệu báo cáo: bảng sự kiện mang theo chiều phân tích của nó.
+    // App điền giá trị này lúc tạo phiếu, lấy từ cửa hàng đã chọn.
+    await createField('audits', 'region', 'string',
+      dropdown(REGIONS, { note: 'Sao chép từ cửa hàng — dùng cho dashboard' }), f);
+
     await createM2O({
       collection: 'audits', field: 'store', related: 'stores',
       oneField: 'audits', onDelete: 'CASCADE', required: true,
