@@ -16,5 +16,11 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
+  ],
+  // File test chạy bằng Node nên cần kiểu và luật import khác hẳn code app.
+  // Kiểm chúng bằng tsconfig.test.json riêng — xem ghi chú trong file đó.
+  "exclude": [
+    "**/*.test.ts",
+    "**/*.test.tsx"
   ]
 }
