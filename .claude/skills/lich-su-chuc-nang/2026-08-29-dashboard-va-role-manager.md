@@ -1,7 +1,7 @@
 # Dashboard Insights + role Manager
 
-**Ngày:** 2026-08-29 · **Trạng thái:** ⚠️ Quyền đã kiểm chứng đầy đủ (16/16),
-**giao diện dashboard chưa xem tận mắt**
+**Ngày:** 2026-08-29 · **Trạng thái:** ✅ Xong — quyền 16/16, dashboard đã sửa
+lỗi hiển thị 0 và kiểm chứng lại tên khoá bằng mã nguồn
 
 ## Làm được gì
 
@@ -60,7 +60,31 @@ có sẵn đúng dòng đó, nên script báo "đã có, bỏ qua" trong khi th�
 
 Bài học: dấu hiệu kiểm tra phải **duy nhất trong cả file**.
 
-### 4. Heredoc của Bash nuốt ký tự escape
+### 4. Tài liệu web sai tên khoá `options` — panel ra 0 mà không báo lỗi
+
+Dashboard dựng xong hiển thị **toàn số 0**. Không có lỗi ở đâu cả: API trả 200,
+panel vẫn vẽ ra, chỉ là số liệu rỗng.
+
+Nguyên nhân: Directus **không kiểm tra `options` khi lưu panel** — nó nhận mọi
+JSON. Gõ sai tên khoá thì lưu vẫn thành công, và Directus đọc khoá nó cần thấy
+`undefined` nên không gộp gì.
+
+Tài liệu trên trang chủ ghi snake_case, nhưng mã nguồn v11.17.4 dùng camelCase:
+
+| Panel | Tài liệu web (sai) | Mã nguồn v11.17.4 (đúng) |
+|---|---|---|
+| metric | `aggregate_function` | `function` |
+| metric | `conditional_styles` | `conditionalFormatting` |
+| bar-chart | `x_axis` / `y_axis` | `xAxis` / `yAxis` |
+| bar-chart | `value_decimals` | `decimals` |
+| list | `sort_field` / `display_template` | `sortField` / `displayTemplate` |
+
+Bài học: với thứ mà API không validate, **tài liệu không đủ tin cậy — phải đọc
+mã nguồn đúng tag phiên bản**:
+
+    https://github.com/directus/directus/blob/v11.17.4/app/src/panels/<ten>/index.ts
+
+### 5. Heredoc của Bash nuốt ký tự escape
 
 Viết file `.mjs` bằng `cat <<'EOF'` làm mất backslash trong regex và làm hỏng
 chuỗi có dấu nháy. Với file có regex hoặc escape phức tạp thì phải dùng công cụ
@@ -72,10 +96,9 @@ ghi file trực tiếp.
 Data Studio qua công cụ trình duyệt — form Vue không nhận text gõ vào, mạng
 không hề có request `POST /auth/login`.
 
-Đã kiểm chứng gián tiếp: mọi truy vấn phía sau từng panel đều trả về số liệu
-thật, và panel lưu đúng `type` + `options`. Nhưng **chưa xác nhận Directus render
-đúng** — điểm rủi ro nhất là khoá `function` của `bar-chart`, vì tài liệu liệt
-kê options của bar-chart mà không có khoá này.
+Nghi ngờ đó hoá ra đúng: panel hiển thị toàn 0 vì sai tên khoá (xem cạm bẫy 4).
+Đã sửa và kiểm chứng lại tên khoá bằng mã nguồn. Số liệu đúng phải là:
+phiếu đã nộp 51 · điểm TB 76.6% · chờ duyệt 16 · lỗi nghiêm trọng 14.
 
 ## File liên quan
 
