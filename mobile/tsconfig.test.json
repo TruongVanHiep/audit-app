@@ -1,0 +1,29 @@
+{
+  // Cấu hình TypeScript RIÊNG cho file test.
+  //
+  // Vì sao phải tách khỏi tsconfig.json chính?
+  //
+  // Test chạy bằng `node --test`, nên cần `@types/node` để biết 'node:test'
+  // và 'node:assert'. Nhưng nếu nhét types: ["node"] vào cấu hình chính thì
+  // toàn bộ code app cũng nhìn thấy các global của Node — TypeScript sẽ KHÔNG
+  // còn báo lỗi khi ai đó lỡ dùng `fs`, `process.exit()` hay `Buffer` trong
+  // màn hình React Native, những thứ không tồn tại trên điện thoại.
+  //
+  // Tách ra thế này thì test được kiểm kiểu đầy đủ, mà app vẫn giữ được hàng
+  // rào bảo vệ.
+  //
+  // Chạy:  npx tsc --noEmit -p tsconfig.test.json
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    // Test import bằng './scoring.ts' kèm đuôi vì Node yêu cầu đường dẫn
+    // đầy đủ, không tự đoán đuôi file như bundler.
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  },
+  "include": [
+    "src/**/*.test.ts",
+    "src/**/*.ts"
+  ],
+  "exclude": []
+}

@@ -1,0 +1,280 @@
+# Quy trình Git cho dự án audit-app
+
+Áp dụng cho cả người và Claude. Mục tiêu: repo sạch, lịch sử đọc được, và
+**đồng đội clone về là chạy được ngay**.
+
+## Bài học: git xoá file thật, không chỉ xoá khỏi index
+
+Ngày 2026-08-28, khi merge nhánh dọn dẹp vào `develop`, git đã xoá sạch
+`data/database`, `data/database_v12_old` và `backup/*.sql` **khỏi ổ đĩa** —
+không chỉ khỏi index. Lý do: cả ba đang được track ở `main` và bị đánh dấu xoá
+trong commit, nên git coi việc xoá file thật là một phần của checkout.
+
+Postgres crash-loop với `initdb: directory exists but is not empty`.
+Dựng lại được trong 2 phút bằng `directus/schema/*.mjs` — nhưng chỉ vì backend
+là code chứ không phải dữ liệu.
+
+**Quy tắc rút ra:** trước bất cứ thao tác git nào đụng tới nhánh khác
+(`switch`, `merge`, `rebase`, `reset`), nếu nhánh đó có khác biệt ở thư mục
+dữ liệu thì **tắt Postgres trước**:
+
+```bash
+docker compose down
+```
+
+Cái bẫy cụ thể đó nay đã xoá: ngày 2026-08-29 đã chạy `git filter-branch`
+gỡ `data/` và `backup/` khỏi **toàn bộ** lịch sử, nên `main` không còn track
+file dữ liệu nào. Dung lượng `.git` giảm từ 16MB xuống 3.2MB, 26 commit giữ
+nguyên. Bản sao lưu trước khi viết lại nằm ở `../audit-app-backup.git`.
+
+Hệ quả cần nhớ: **mọi commit hash đã đổi**. Bản clone nào tạo trước
+2026-08-29 đều không dùng chung được nữa.
+
+## Không bao giờ commit
+
+Đây là phần quan trọng nhất. `.gitignore` ở thư mục gốc đã chặn sẵn tất cả,
+nhưng `.gitignore` chỉ chặn file CHƯA được track — thứ đã lỡ commit thì phải
+gỡ bằng tay.
+
+| Không commit | Vì sao |
+|---|---|
+| `data/database/` | Thư mục dữ liệu Postgres. Hàng nghìn file nhị phân, đổi liên tục khi container chạy, diff vô nghĩa, phình repo, và chứa cả hash mật khẩu người dùng. Dữ liệu tái tạo được bằng script. |
+| `backup/*.sql` | Dump database. Là dữ liệu, không phải mã nguồn. Chứa dữ liệu thật khi lên production. |
+| `.claude/settings.local.json` | Theo thiết kế đây là file cấu hình **cá nhân**, không dùng chung. |
+| `uploads/` | File người dùng tải lên. Là dữ liệu. |
+| `mobile/node_modules/`, `.env` | Tái tạo bằng `npm install`; `.env` chứa cấu hình theo máy. |
+
+Nguyên tắc chung: **commit thứ tạo ra dữ liệu, không commit dữ liệu.**
+Schema và seed nằm trong `directus/schema/*.mjs` — đó mới là nguồn sự thật.
+
+## Mô hình nhánh: Gitflow
+
+Dự án dùng **Gitflow** (Vincent Driessen) — chia quá trình phát triển thành các
+giai đoạn rõ ràng, hợp với dự án phát hành theo version như app audit này.
+
+### Hai nhánh sống mãi
+
+| Nhánh | Vai trò |
+|---|---|
+| `main` | Mã nguồn **ổn định**, đúng bằng thứ đang chạy trên production. Mỗi commit trên `main` đều được gắn tag version. Không bao giờ commit thẳng vào. |
+| `develop` | Chứa **toàn bộ history** phát triển. Là nơi tích hợp mọi tính năng mới và sửa đổi. Đây là nhánh mặc định để rẽ nhánh ra làm việc. |
+
+### Bốn nhánh tạm thời
+
+| Nhánh | Tách ra từ | Merge trở lại vào | Dùng khi |
+|---|---|---|---|
+| `feature/<việc>` | `develop` | `develop` | Làm tính năng mới hoặc sửa đổi tính năng |
+| `release/<version>` | `develop` | `main` **và** `develop` | Develop đã đủ tính năng, cần QA trước khi lên prod |
+| `hotfix/<việc>` | `main` | `main` **và** `develop` | Lỗi phát sinh trên production, phải sửa gấp |
+| `bugfix/<việc>` | `develop` | `develop` | Lỗi phát hiện lúc đang phát triển (chưa lên prod) |
+
+```
+main        ●────────────────●──────────────●──────  (tag: v1.0.0, v1.0.1, v1.1.0)
+             \              /  \           /
+release       \        ●───●    \         /          (QA / staging)
+               \      /          \       /
+develop     ●───●────●────────────●─────●───────
+             \     /                \   
+feature       ●───●                  \                (nhiều nhánh song song)
+                                      \
+hotfix                                 ●              (tách từ main, sửa lỗi prod)
+```
+
+Quy ước đặt tên — dùng tiếng Việt không dấu, nối bằng gạch ngang:
+
+```
+feature/man-hinh-checklist
+feature/upload-anh-bang-chung
+bugfix/diem-tinh-sai-khi-bo-trong
+release/1.2.0
+hotfix/loi-403-khi-upload
+```
+
+Mỗi nhánh làm **một việc**. Nhánh sống càng ngắn càng tốt — nhánh để một tuần
+là lúc merge sẽ đau.
+
+### Trạng thái hiện tại
+
+`develop` đã có và là nhánh làm việc chính. `main` vẫn ở commit gốc — đúng
+Gitflow, `main` chỉ tiến khi phát hành một version.
+
+Repo **chưa từng được push**. Khi push lần đầu, nhớ đặt `develop` làm nhánh
+mặc định trên GitHub để pull request mới tự nhắm vào `develop` chứ không phải
+`main`.
+
+## Commit
+
+Dùng [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+<loại>(<phạm vi>): <mô tả ngắn, tiếng Việt, không viết hoa đầu, không chấm cuối>
+
+<thân bài: giải thích VÌ SAO, không phải LÀM GÌ — cái làm gì đã nằm trong diff>
+```
+
+Loại: `feat` `fix` `chore` `docs` `refactor` `test` `perf`
+Phạm vi: `directus` `mobile` `docker` `schema` `quyen`
+
+Ví dụ tốt:
+
+```
+fix(quyen): them validation chan auditor mao danh nguoi khac
+
+Preset `auditor: $CURRENT_USER` chi la gia tri mac dinh — client gui
+`auditor: <id nguoi khac>` len thi gia tri cua client thang. Da kiem chung
+bang thuc nghiem: auditor A tao duoc phieu gan cho auditor B.
+
+Them validation `{ auditor: { _eq: $CURRENT_USER } }` va test trong verify.mjs.
+```
+
+Một commit = một thay đổi logic hoàn chỉnh. Đừng gộp "sửa lỗi + đổi tên biến +
+thêm tính năng" vào một commit.
+
+## Trước khi commit
+
+Bắt buộc, theo thứ tự:
+
+```bash
+git status              # xem CHÍNH XÁC những gì sắp vào commit
+git diff --staged       # đọc lại diff, không commit mù
+```
+
+Đụng vào `directus/schema/` thì phải chạy:
+
+```bash
+node directus/schema/setup-roles.mjs && node directus/schema/verify.mjs
+```
+
+Đụng vào `mobile/` thì phải chạy:
+
+```bash
+cd mobile && npx tsc --noEmit
+```
+
+Test đỏ thì **không commit**. Commit code hỏng lên `main` là cách nhanh nhất
+làm cả nhóm mất buổi sáng.
+
+## Vòng đời từng loại nhánh
+
+Luôn merge bằng `--no-ff`. Fast-forward làm mất dấu vết ranh giới của tính năng,
+lịch sử phẳng lì và sau này không lần lại được một tính năng gồm những commit nào.
+
+### 1. Feature — làm tính năng mới
+
+```bash
+git switch develop && git pull
+git switch -c feature/man-hinh-checklist
+
+# ...làm việc, commit nhiều lần...
+
+git switch develop && git pull
+git switch feature/man-hinh-checklist
+git rebase develop          # gỡ xung đột trên nhánh của MÌNH, không làm bẩn develop
+# chạy lại test sau rebase
+```
+
+Xong thì mở **pull request** vào `develop`, không tự merge. PR là nơi đồng đội
+đọc code trước khi nó vào nhánh chung.
+
+```bash
+git switch develop
+git merge --no-ff feature/man-hinh-checklist
+git branch -d feature/man-hinh-checklist
+```
+
+### 2. Release — chuẩn bị phát hành
+
+Khi `develop` đã đủ tính năng cho một version:
+
+```bash
+git switch develop && git pull
+git switch -c release/1.2.0
+```
+
+Nhánh này là môi trường **staging/QA**. Trên đây chỉ được:
+- sửa lỗi QA tìm ra
+- cập nhật số version, changelog
+
+**Không** thêm tính năng mới. Muốn thêm thì để dành cho version sau — đó là toàn
+bộ lý do release tồn tại.
+
+Test xong thì merge vào `main`, gắn tag, rồi merge ngược về `develop`:
+
+```bash
+git switch main
+git merge --no-ff release/1.2.0
+git tag -a v1.2.0 -m "Release 1.2.0: man hinh checklist + upload anh"
+
+git switch develop
+git merge --no-ff release/1.2.0     # để develop có các fix của QA
+git branch -d release/1.2.0
+git push origin main develop --tags
+```
+
+**Bước merge ngược về `develop` rất hay bị quên.** Quên là các fix lúc QA biến
+mất ở version sau, và lỗi cũ quay lại.
+
+### 3. Hotfix — chữa cháy production
+
+Lỗi trên production thì tách thẳng từ `main`, không đi qua `develop` (vì
+`develop` đang có code chưa test xong):
+
+```bash
+git switch main && git pull
+git switch -c hotfix/loi-403-khi-upload
+
+# ...sửa, test...
+
+git switch main
+git merge --no-ff hotfix/loi-403-khi-upload
+git tag -a v1.2.1 -m "Hotfix: loi 403 khi upload anh bang chung"
+
+git switch develop
+git merge --no-ff hotfix/loi-403-khi-upload    # bắt buộc, nếu không lỗi sẽ quay lại
+git branch -d hotfix/loi-403-khi-upload
+git push origin main develop --tags
+```
+
+Hotfix chỉ tăng số cuối (patch): `1.2.0` → `1.2.1`.
+
+## Đánh version
+
+Dùng [Semantic Versioning](https://semver.org/lang/vi/): `MAJOR.MINOR.PATCH`
+
+| Tăng số | Khi nào | Ví dụ ở dự án này |
+|---|---|---|
+| `PATCH` | Sửa lỗi, không đổi cách dùng | Sửa lỗi 403 khi upload ảnh |
+| `MINOR` | Thêm tính năng, cũ vẫn chạy | Thêm màn hình xem lại phiếu đã nộp |
+| `MAJOR` | Thay đổi phá vỡ tương thích | Đổi schema khiến app bản cũ không gọi được API |
+
+Tag chỉ gắn trên `main`, và chỉ gắn khi merge từ `release/` hoặc `hotfix/`.
+
+## Quy tắc cho Claude
+
+- **Chỉ commit khi được yêu cầu rõ ràng.** Không tự động commit sau khi sửa code.
+- **Không bao giờ commit thẳng vào `main` hoặc `develop`.** Đang đứng ở một
+  trong hai nhánh đó thì tạo nhánh `feature/` (tách từ `develop`) hoặc
+  `hotfix/` (tách từ `main`) trước đã.
+- Rẽ nhánh làm tính năng thì tách từ `develop`, không tách từ `main`.
+- Merge luôn dùng `--no-ff`. Không bao giờ `git merge --squash` vào `develop`.
+- Không tự gắn tag version — đó là quyết định phát hành, phải hỏi trước.
+- Merge `release/` hoặc `hotfix/` thì phải merge vào **cả hai** nhánh `main` và
+  `develop`. Nhắc lại nếu người dùng chỉ yêu cầu merge một bên.
+- Sau `git add`, luôn chạy `git status` đọc lại danh sách file. Thấy file lạ —
+  nhất là file có vẻ chứa dữ liệu hoặc secret — thì mở ra xem trước khi commit.
+- Không `git push` khi chưa được yêu cầu.
+- Không dùng `git reset --hard`, `git checkout .`, `git clean -fd` khi chưa
+  chạy `git status` và chưa `git stash -u` những thay đổi đang có.
+
+---
+
+## Những gì đã dọn
+
+Bốn vấn đề từng tồn tại trong repo này đều đã xử lý xong ngày 2026-08-28/29:
+mã nguồn `mobile/` bị kẹt trong repo con, thư mục dữ liệu Postgres bị commit,
+thiếu `.gitignore`, và rules nằm sai thư mục.
+
+Chi tiết từng vấn đề — cách phát hiện, cách sửa, và cạm bẫy gặp phải — nằm
+trong nhật ký chức năng:
+
+- [Dọn dẹp repo + dựng Gitflow](../skills/lich-su-chuc-nang/2026-08-28-don-dep-repo-git.md)

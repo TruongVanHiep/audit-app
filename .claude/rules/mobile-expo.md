@@ -28,6 +28,18 @@ Vài điểm đã xác nhận cho SDK 57:
 Biến `EXPO_PUBLIC_*` được nhúng thẳng vào bundle nên **ai cũng đọc được** —
 không bao giờ để mật khẩu, API key hay secret vào đó.
 
+**Đổi `.env` thôi là CHƯA ĐỦ.** `EXPO_PUBLIC_*` được nhúng vào bundle lúc
+biên dịch, nên Metro đang chạy vẫn phát ra giá trị cũ. Phải tắt hẳn rồi chạy
+lại `npx expo start --clear`.
+
+Đã dính lỗi này ngày 2026-08-29: IP Wi-Fi đổi từ `172.19.200.63` sang
+`192.168.1.87`, app báo không đăng nhập được. Cách kiểm chứng nhanh xem bundle
+đang mang IP nào:
+
+```bash
+curl -s "http://localhost:8081/.expo/.virtual-metro-entry.bundle?platform=web&dev=true" | grep -c "<IP muốn tìm>"
+```
+
 ## Kiến trúc
 
 - Màn hình (`src/app/`) chỉ lo hiển thị. Mọi lời gọi Directus nằm trong
