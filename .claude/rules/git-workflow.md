@@ -3,33 +3,38 @@
 Áp dụng cho cả người và Claude. Mục tiêu: repo sạch, lịch sử đọc được, và
 **đồng đội clone về là chạy được ngay**.
 
-## ⚠️ Cảnh báo: ĐỪNG `git switch main`
+## Bài học: git xoá file thật, không chỉ xoá khỏi index
 
-Nhánh `main` vẫn đang ở commit `8882b80`, nơi 2.906 file `data/database` còn
-được theo dõi. Chuyển sang `main` sẽ khiến git **ghi đè thư mục dữ liệu
-Postgres đang chạy** bằng bản chụp cũ — database hỏng ngay lập tức.
+Ngày 2026-08-28, khi merge nhánh dọn dẹp vào `develop`, git đã xoá sạch
+`data/database`, `data/database_v12_old` và `backup/*.sql` **khỏi ổ đĩa** —
+không chỉ khỏi index. Lý do: cả ba đang được track ở `main` và bị đánh dấu xoá
+trong commit, nên git coi việc xoá file thật là một phần của checkout.
 
-Đây không phải giả thuyết. Ngày 2026-08-28, khi merge nhánh dọn dẹp vào
-`develop`, git đã xoá sạch `data/database`, `data/database_v12_old` và
-`backup/*.sql` khỏi ổ đĩa (vì cả ba đều đang được track và bị đánh dấu xoá
-trong commit). Postgres crash-loop với lỗi
-`initdb: directory exists but is not empty`.
+Postgres crash-loop với `initdb: directory exists but is not empty`.
+Dựng lại được trong 2 phút bằng `directus/schema/*.mjs` — nhưng chỉ vì backend
+là code chứ không phải dữ liệu.
 
-Dựng lại được trong 2 phút nhờ script schema — nhưng chỉ vì backend là code.
-
-**Trước khi làm bất cứ thao tác nào đụng tới `main`:**
+**Quy tắc rút ra:** trước bất cứ thao tác git nào đụng tới nhánh khác
+(`switch`, `merge`, `rebase`, `reset`), nếu nhánh đó có khác biệt ở thư mục
+dữ liệu thì **tắt Postgres trước**:
 
 ```bash
-docker compose down          # tắt Postgres, tránh ghi đè file đang mở
+docker compose down
 ```
 
-Cách xoá hẳn cái bẫy này: phát hành `release/0.1.0` để `main` bắt kịp
-`develop`, hoặc viết lại lịch sử bằng `git filter-repo`. Xem mục *Việc cần sửa*.
+Cái bẫy cụ thể đó nay đã xoá: ngày 2026-08-29 đã chạy `git filter-branch`
+gỡ `data/` và `backup/` khỏi **toàn bộ** lịch sử, nên `main` không còn track
+file dữ liệu nào. Dung lượng `.git` giảm từ 16MB xuống 3.2MB, 26 commit giữ
+nguyên. Bản sao lưu trước khi viết lại nằm ở `../audit-app-backup.git`.
+
+Hệ quả cần nhớ: **mọi commit hash đã đổi**. Bản clone nào tạo trước
+2026-08-29 đều không dùng chung được nữa.
 
 ## Không bao giờ commit
 
-Đây là phần quan trọng nhất. Repo này đang vi phạm cả bốn — xem mục *Việc cần
-sửa* ở cuối.
+Đây là phần quan trọng nhất. `.gitignore` ở thư mục gốc đã chặn sẵn tất cả,
+nhưng `.gitignore` chỉ chặn file CHƯA được track — thứ đã lỡ commit thì phải
+gỡ bằng tay.
 
 | Không commit | Vì sao |
 |---|---|
@@ -88,16 +93,14 @@ hotfix/loi-403-khi-upload
 Mỗi nhánh làm **một việc**. Nhánh sống càng ngắn càng tốt — nhánh để một tuần
 là lúc merge sẽ đau.
 
-### Khởi tạo `develop` (repo này chưa có)
+### Trạng thái hiện tại
 
-```bash
-git switch main
-git switch -c develop
-git push -u origin develop
-```
+`develop` đã có và là nhánh làm việc chính. `main` vẫn ở commit gốc — đúng
+Gitflow, `main` chỉ tiến khi phát hành một version.
 
-Sau đó đặt `develop` làm nhánh mặc định trên GitHub, để pull request mới tự
-nhắm vào `develop` chứ không phải `main`.
+Repo **chưa từng được push**. Khi push lần đầu, nhớ đặt `develop` làm nhánh
+mặc định trên GitHub để pull request mới tự nhắm vào `develop` chứ không phải
+`main`.
 
 ## Commit
 
@@ -265,69 +268,13 @@ Tag chỉ gắn trên `main`, và chỉ gắn khi merge từ `release/` hoặc `
 
 ---
 
-## Việc cần sửa trong repo này
+## Những gì đã dọn
 
-Bốn vấn đề đang tồn tại, xếp theo mức nghiêm trọng.
+Bốn vấn đề từng tồn tại trong repo này đều đã xử lý xong ngày 2026-08-28/29:
+mã nguồn `mobile/` bị kẹt trong repo con, thư mục dữ liệu Postgres bị commit,
+thiếu `.gitignore`, và rules nằm sai thư mục.
 
-### 1. `mobile/` không nằm trong repo — nghiêm trọng nhất
+Chi tiết từng vấn đề — cách phát hiện, cách sửa, và cạm bẫy gặp phải — nằm
+trong nhật ký chức năng:
 
-`create-expo-app` đã tạo một git repo riêng bên trong `mobile/`. Repo cha đang
-ghi nhận `mobile` ở chế độ `160000` (gitlink) nhưng **không có `.gitmodules`**.
-
-Hậu quả: ai clone repo này về sẽ nhận được thư mục `mobile/` **rỗng**. Toàn bộ
-mã nguồn app điện thoại không hề được repo cha lưu.
-
-Cách sửa (gộp mobile vào repo cha — hợp lý vì backend và app đi cùng nhau):
-
-```bash
-git rm --cached mobile
-rm -rf mobile/.git
-git add mobile
-```
-
-### 2. Thư mục dữ liệu Postgres đang được commit
-
-2.906 file trong `data/database/` đang nằm trong repo.
-
-```bash
-git rm -r --cached data/database backup
-```
-
-### 3. Chưa có `.gitignore`
-
-Tạo `.gitignore` ở thư mục gốc:
-
-```gitignore
-# Dữ liệu runtime — tái tạo bằng directus/schema/*.mjs
-data/
-uploads/
-backup/
-
-# Cấu hình cá nhân
-.claude/settings.local.json
-.env
-.env.local
-
-# Node
-node_modules/
-npm-debug.log*
-
-# Expo
-mobile/.expo/
-mobile/dist/
-mobile/web-build/
-
-# Hệ điều hành
-.DS_Store
-Thumbs.db
-```
-
-### 4. Rules đang nằm sai chỗ nên không có tác dụng
-
-Ba file rule hiện ở `.claude/skills/rules/`. Claude Code chỉ đọc rules từ
-`.claude/rules/`, và `skills/` thì cần cấu trúc `<tên>/SKILL.md`. Ở vị trí hiện
-tại chúng **không được nạp vào đâu cả**.
-
-```bash
-git mv .claude/skills/rules .claude/rules
-```
+- [Dọn dẹp repo + dựng Gitflow](../skills/lich-su-chuc-nang/2026-08-28-don-dep-repo-git.md)
